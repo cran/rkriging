@@ -1,0 +1,29 @@
+Package: rkriging
+Type: Package
+Title: Kriging Modeling
+Version: 1.0
+Authors@R: c(
+    person(given = "Chaofan",
+           family = "Huang",
+           role = c("aut", "cre"),
+           email = "10billhuang01@gmail.com"),
+    person(given = "V. Roshan",
+           family = "Joseph",
+           role = c("aut"),
+           email = "roshan@gatech.edu")
+    )
+Description: An 'Eigen'-based computationally efficient 'C++' implementation for fitting various kriging models to data. This research is supported by U.S. National Science Foundation grant DMS-2310637.
+License: GPL (>= 2)
+Depends: R (>= 3.0.2)
+Imports: Rcpp, nloptr (>= 1.2.0), methods, stats
+LinkingTo: Rcpp, RcppEigen (>= 0.3.3.5.0), BH (>= 1.75.0.0), nloptr (>=
+        1.2.0)
+Encoding: UTF-8
+RoxygenNote: 7.1.2
+NeedsCompilation: yes
+Packaged: 2024-07-04 19:08:48 UTC; billhuang
+Author: Chaofan Huang [aut, cre],
+  V. Roshan Joseph [aut]
+Maintainer: Chaofan Huang <10billhuang01@gmail.com>
+Repository: CRAN
+Date/Publication: 2024-07-08 05:00:02 UTC
