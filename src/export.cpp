@@ -104,7 +104,7 @@ RCPP_MODULE(Kriging) {
     ;
 
     Rcpp::class_<OrdinaryKriging>("OrdinaryKriging")
-        .derives<Kernel>("Kriging")
+        .derives<Kriging>("Kriging")
         .constructor<Eigen::MatrixXd,Eigen::VectorXd,Kernel&,bool>()
     ;
 
@@ -114,20 +114,20 @@ RCPP_MODULE(Kriging) {
     ;
 
     Rcpp::class_<RationalKriging>("RationalKriging")
-        .derives<Kernel>("Kriging")
+        .derives<Kriging>("Kriging")
         .constructor<Eigen::MatrixXd,Eigen::VectorXd,Kernel&,bool>()
         .method("get_c", &RationalKriging::get_c)
     ;
 
     Rcpp::class_<GeneralizedRationalKriging>("GeneralizedRationalKriging")
-        .derives<Kernel>("Kriging")
+        .derives<Kriging>("Kriging")
         .constructor<Eigen::MatrixXd,Eigen::VectorXd,Kernel&,bool>()
         .method("get_c0", &GeneralizedRationalKriging::get_c0)
         .method("get_c", &GeneralizedRationalKriging::get_c)
     ;
 
     Rcpp::class_<UniversalKriging>("UniversalKriging")
-        .derives<Kernel>("Kriging")
+        .derives<Kriging>("Kriging")
         .constructor<Eigen::MatrixXd,Eigen::VectorXd,Kernel&,bool,std::size_t,Rcpp::Function>()
         .method("get_beta", &UniversalKriging::get_beta)
     ;

@@ -1,6 +1,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
+#include <limits>
 #include <RcppEigen.h>
 // [[Rcpp::depends(RcppEigen)]]
 

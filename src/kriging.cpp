@@ -20,10 +20,10 @@ double nlopt_nllh(unsigned n, const double* x, double* grad, void* data) {
     return kriging->get_nllh(log_lengthscale, nugget);
 }
 
-Kriging::Kriging(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, Kernel& Ker, const bool& interpolation): n_(X.rows()), p_(X.cols()), X_(X), y_(y), Ker_(Ker), interpolation_(interpolation) {
+Kriging::Kriging(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, Kernel& Ker, const bool& interpolation): n_(X.rows()), p_(X.cols()), X_(X), y_(y), Ker_(Ker), interpolation_(interpolation), L_(n_) {
     a_.resize(n_);
     b_.resize(n_);
-    L_ = Eigen::LLT<Eigen::MatrixXd>(n_);
+    // L_ = Eigen::LLT<Eigen::MatrixXd>(n_);
     y_tss_ = y_.squaredNorm() - std::pow(y_.sum(),2)/n_;
     nugget_ = interpolation_ ? 1e-6 : 1e-3;
     nllh_ = std::numeric_limits<double>::infinity();
@@ -382,14 +382,14 @@ void GeneralizedRationalKriging::predict(const Eigen::VectorXd& xnew, double& me
     sd = std::sqrt(nu2_) * std::sqrt(std::max(1 - d.dot(d) + std::pow(tx,2)/a_.dot(a_), 0.0)) / sx;
 }
 
-UniversalKriging::UniversalKriging(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, Kernel& Ker, const bool& interpolation, const std::size_t& pb, Rcpp::Function bfunc): Kriging(X,y,Ker,interpolation), pb_(pb), bfunc_(bfunc) {
+UniversalKriging::UniversalKriging(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, Kernel& Ker, const bool& interpolation, const std::size_t& pb, Rcpp::Function bfunc): Kriging(X,y,Ker,interpolation), pb_(pb), bfunc_(bfunc), LQ_(n_,pb_) {
     beta_.resize(pb_);
     B_.resize(n_, pb_);
     for (std::size_t i = 0; i < n_; i++) {
         std::vector<double> basis = Rcpp::as<std::vector<double>>(bfunc_(X_.row(i)));
         B_.row(i) = Eigen::Map<Eigen::VectorXd>(&basis[0], pb_);
     }
-    LQ_ = Eigen::ColPivHouseholderQR<Eigen::MatrixXd>(n_, pb_);
+    // LQ_ = Eigen::ColPivHouseholderQR<Eigen::MatrixXd>(n_, pb_);
 }
 
 void UniversalKriging::add_data(const Eigen::MatrixXd& Xn, const Eigen::VectorXd& yn) {

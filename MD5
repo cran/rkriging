@@ -1,4 +1,4 @@
-f2ca9084a62e334eedc3c4f838b69d55 *DESCRIPTION
+5107395b1e603a7602f331cc8e3fa919 *DESCRIPTION
 7c65fee2ef19bf6708c7bd0794fb7388 *NAMESPACE
 a1cffbc2fae835dc758d7a13e998841c *R/kernel.R
 498cc3a091444412c41ad23ffa1fc71a *R/kriging.R
@@ -74,10 +74,10 @@ e66ebb479cf230a015d88efb35d267f3 *man/Rational.Kriging.Rd
 c446ba3d1db4f63e333635b68e228378 *man/Universal.Kriging.Rd
 1a315aa73f3882ca3d110365f272fbc0 *src/Makevars
 8be256788f6ddf64f0462be434f9dd9b *src/RcppExports.cpp
-b73b2ae08acede7bedb8a7fc73319481 *src/export.cpp
+728c8302caaa002d88262b2181d4bd8f *src/export.cpp
 434e49e2e531191add3f39dbc13b989d *src/kernel.cpp
-b3855ea6b743c072f75293e28e7ee947 *src/kernel.h
-a32b6efb1bc86c6ad70983d53738ac15 *src/kriging.cpp
+39bde6a657589e8a97b11124823bb7df *src/kernel.h
+a725bce8c038b1b4bf4cfef99122c5a3 *src/kriging.cpp
 203e82b0d0515e3c2ac7ca66b7977236 *src/kriging.h
 629ecfed46840cbb4d7b393103869152 *src/utils.cpp
 67c0bfefccf41919e0bc04a4b308d5ee *src/utils.h
