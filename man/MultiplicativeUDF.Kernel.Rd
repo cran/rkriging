@@ -19,7 +19,7 @@ This function specifies the Multiplicative kernel with the user defined R functi
 }
 \details{
 The Multiplicative User Defined Function (UDF) kernel is given by 
-\deqn{k(r)=\prod_{i=1}^{p}f(r_{i}),}{k(r) = prod_{i=1}^{p} f(r_i),}
+\deqn{k(r)=\prod_{i=1}^{p}f(r_{i}^2),}{k(r) = prod_{i=1}^{p} f(r_{i}^2),}
 where \eqn{f}{f} is the user defined kernel function that takes \eqn{r_{i}^2}{r_i^2} as input, 
 where \deqn{r_{i}(x,x^{\prime})=\sqrt{\left(\frac{x_{i}-x_{i}^{\prime}}{l_{i}}\right)^2}}{r_i(x,x') = sqrt([(x_i - x'_i) / l_i]^2)} 
 is the dimension-wise euclidean distances between \eqn{x}{x} and \eqn{x^{\prime}}{x'} weighted by

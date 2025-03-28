@@ -15,7 +15,6 @@ nlopt_opt nlopt_init(const std::string& algorithm, const::std::size_t& dim) {
 	if (algorithm == "NLOPT_GD_STOGO") return nlopt_create(NLOPT_GD_STOGO, dim);
 	if (algorithm == "NLOPT_GD_STOGO_RAND") return nlopt_create(NLOPT_GD_STOGO_RAND, dim);
 	if (algorithm == "NLOPT_LD_SLSQP") return nlopt_create(NLOPT_LD_SLSQP, dim);
-	if (algorithm == "NLOPT_LD_LBFGS_NOCEDAL") return nlopt_create(NLOPT_LD_LBFGS_NOCEDAL, dim);
 	if (algorithm == "NLOPT_LD_LBFGS") return nlopt_create(NLOPT_LD_LBFGS, dim);
 	if (algorithm == "NLOPT_LN_PRAXIS") return nlopt_create(NLOPT_LN_PRAXIS, dim);
 	if (algorithm == "NLOPT_LD_VAR1") return nlopt_create(NLOPT_LD_VAR1, dim);

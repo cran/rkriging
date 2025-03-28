@@ -1,6 +1,6 @@
-5107395b1e603a7602f331cc8e3fa919 *DESCRIPTION
+9652caf7597c74039bcd0809fa30d20a *DESCRIPTION
 7c65fee2ef19bf6708c7bd0794fb7388 *NAMESPACE
-a1cffbc2fae835dc758d7a13e998841c *R/kernel.R
+2eae13cd17015f3bc4a24ff374ad9181 *R/kernel.R
 498cc3a091444412c41ad23ffa1fc71a *R/kriging.R
 c1ee227f3ae984057aec6d3ea6cfe2fe *inst/include/Spectra/DavidsonSymEigsSolver.h
 cbd44c49e74804cb97e2d237982a40eb *inst/include/Spectra/GenEigsBase.h
@@ -65,12 +65,12 @@ f0be9d9ec0b993318b552dfb4c2aaa23 *man/Get.Kernel.Rd
 590da6ae087c37a9d401423ce3af8d25 *man/Matern52.Kernel.Rd
 bcfa1cd09d293b0047ab5a529c2a6c5f *man/MultiplicativeMatern.Kernel.Rd
 f829f360e675603acf395ec62f3f3b01 *man/MultiplicativeRQ.Kernel.Rd
-05edd5a1802692f70ce9574f9aec36ad *man/MultiplicativeUDF.Kernel.Rd
+3b41a2fc1b4dbb53d5ca21f15852edeb *man/MultiplicativeUDF.Kernel.Rd
 697651389ddb78d35ff712a194e3e152 *man/Ordinary.Kriging.Rd
 31d05c3fc80a554855b78bbfc43bb14f *man/Predict.Kriging.Rd
 a70b606040d209b24dffa2f7cceea854 *man/RQ.Kernel.Rd
 e66ebb479cf230a015d88efb35d267f3 *man/Rational.Kriging.Rd
-721d092aae12fbf1c7cfa345df72dec3 *man/UDF.Kernel.Rd
+0bec95a84fdc2c29a83ad00551f1400c *man/UDF.Kernel.Rd
 c446ba3d1db4f63e333635b68e228378 *man/Universal.Kriging.Rd
 1a315aa73f3882ca3d110365f272fbc0 *src/Makevars
 8be256788f6ddf64f0462be434f9dd9b *src/RcppExports.cpp
@@ -79,5 +79,5 @@ c446ba3d1db4f63e333635b68e228378 *man/Universal.Kriging.Rd
 39bde6a657589e8a97b11124823bb7df *src/kernel.h
 a725bce8c038b1b4bf4cfef99122c5a3 *src/kriging.cpp
 203e82b0d0515e3c2ac7ca66b7977236 *src/kriging.h
-629ecfed46840cbb4d7b393103869152 *src/utils.cpp
+798ef3d3aa92e1891d3ded68d6d2331d *src/utils.cpp
 67c0bfefccf41919e0bc04a4b308d5ee *src/utils.h

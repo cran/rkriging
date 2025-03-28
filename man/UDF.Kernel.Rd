@@ -19,7 +19,7 @@ This function specifies a kernel with the user defined R function.
 }
 \details{
 The User Defined Function (UDF) kernel is given by
-\deqn{k(r) = f(r)}{k(r) = f(r)}
+\deqn{k(r) = f(r^2)}{k(r) = f(r^2)}
 where \eqn{f}{f} is the user defined kernel function that takes \eqn{r^2}{r^2} as input, 
 where \deqn{r(x,x^{\prime})=\sqrt{\sum_{i=1}^{p}\left(\frac{x_{i}-x_{i}^{\prime}}{l_{i}}\right)^2},}{r(x,x') = sqrt(sum_{i=1}^{p} [(x_i - x'_i) / l_i]^2),} 
 is the euclidean distance between \eqn{x}{x} and \eqn{x^{\prime}}{x'} weighted by
