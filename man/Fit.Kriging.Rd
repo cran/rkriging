@@ -9,11 +9,13 @@ Fit.Kriging(
   y,
   interpolation = TRUE,
   fit = TRUE,
+  nugget = NULL,
   model = "OK",
   model.parameters = list(),
   kernel = NULL,
   kernel.parameters = list(),
-  nlopt.parameters = list()
+  nlopt.parameters = list(),
+  scale = FALSE
 )
 }
 \arguments{
@@ -25,6 +27,8 @@ Fit.Kriging(
 
 \item{fit}{whether to fit the length scale parameters from data}
 
+\item{nugget}{an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling}
+
 \item{model}{choice of kriging model: OK, UK, LK, RK, GRK}
 
 \item{model.parameters}{a list of parameters required for the specific kriging model, e.g. basis functions for universal kriging}
@@ -34,9 +38,11 @@ Fit.Kriging(
 \item{kernel.parameters}{a list of parameters required for the kernel, if no kernel class object is provided}
 
 \item{nlopt.parameters}{a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation}
+
+\item{scale}{whether to scale each input dimension to \code{[0, 1]} before fitting. When \code{TRUE}, the training minima and maxima are stored in the returned object and reused by \link{Predict.Kriging}.}
 }
 \value{
-A Kriging Class Object.
+A Kriging Class Object. When \code{scale=TRUE}, the returned object stores the training input minima and maxima as \code{scale_min} and \code{scale_max} attributes.
 }
 \description{
 This function provides a common interface to fit various kriging models from the data.
@@ -46,7 +52,7 @@ RK (\link{Rational.Kriging}), and GRK (\link{Generalized.Rational.Kriging}) are 
 \details{
 Kriging gives the best linear unbiased predictor given the data. 
 It can also be given a Bayesian interpretation by assuming a Gaussian process (GP) prior for the underlying function.
-Please see Santner et al. (2003), Rasmussen and Williams (2006), and Joseph (2024) for details.
+Please see Santner et al. (2003), Rasmussen and Williams (2006), Joseph (2025), and Joseph (2026) for details.
 
 For data from deterministic computer experiments, use \code{interpolation=TRUE} and will give an interpolator. 
 For noisy data, use \code{interpolation=FALSE}, which will give an approximator of the underlying function.
@@ -247,13 +253,15 @@ Get.Kriging.Parameters(kriging)
 
 }
 \references{
+Santner, T. J., Williams, B. J., & Notz, W. I. (2003). \emph{The Design and Analysis of Computer Experiments}. Springer.
+
 Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 
-Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
+
+Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 
 Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
-
-Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
 }
 \seealso{
 \link{Predict.Kriging}, \link{Get.Kriging.Parameters}, \link{Get.Kernel}, 
@@ -261,5 +269,5 @@ Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{Th
 \link{Rational.Kriging}, \link{Generalized.Rational.Kriging}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

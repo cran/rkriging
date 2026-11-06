@@ -41,13 +41,11 @@ Evaluate.Kernel(kernel, X)
 
 }
 \references{
-Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
-
-Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
+Song, D. and Joseph, V. R. (2026). "Efficient Active Learning Strategies for Computer Experiments." \emph{Technometrics}, 68, 65-78.
 }
 \seealso{
 \link{RQ.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

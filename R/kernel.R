@@ -14,14 +14,14 @@ Rcpp::loadModule("Kernel", TRUE)
 #' See arguments section for the available kernels in this package. 
 #' 
 #' @param lengthscale a vector for the positive length scale parameters
-#' @param type kernel type: Gaussian, RQ, Matern12, Matern32, Matern52, Matern, UDF, MultiplicativeRQ, MultiplicativeMatern, MultiplicativeUDF 
+#' @param type kernel type: Gaussian, RQ, IM, Matern12, Matern32, Matern52, Matern, UDF, MultiplicativeRQ, MultiplicativeIM, MultiplicativeMatern, MultiplicativeUDF 
 #' @param parameters a list of parameters required for the specific kernel
 #' 
 #' @return 
 #' A Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -29,10 +29,10 @@ Rcpp::loadModule("Kernel", TRUE)
 #' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
 #' 
 #' @seealso 
-#' \link{Evaluate.Kernel}, \link{Gaussian.Kernel}, \link{RQ.Kernel}, 
+#' \link{Evaluate.Kernel}, \link{Gaussian.Kernel}, \link{RQ.Kernel}, \link{IM.Kernel},
 #' \link{Matern12.Kernel}, \link{Matern32.Kernel}, \link{Matern52.Kernel}
 #' \link{Matern.Kernel}, \link{UDF.Kernel},
-#' \link{MultiplicativeRQ.Kernel}, \link{MultiplicativeMatern.Kernel}, \link{MultiplicativeUDF.Kernel}.
+#' \link{MultiplicativeRQ.Kernel}, \link{MultiplicativeIM.Kernel}, \link{MultiplicativeMatern.Kernel}, \link{MultiplicativeUDF.Kernel}.
 #' 
 #' @export
 #' 
@@ -48,6 +48,10 @@ Rcpp::loadModule("Kernel", TRUE)
 #' 
 #' # Rational Quadratic (RQ)
 #' kernel <- Get.Kernel(lengthscale, type="RQ", parameters=list(alpha=1))
+#' Evaluate.Kernel(kernel, X) 
+#' 
+#' # Inverse Multiquadric (IM)
+#' kernel <- Get.Kernel(lengthscale, type="IM", parameters=list(alpha=1))
 #' Evaluate.Kernel(kernel, X) 
 #' 
 #' # Matern(1/2)
@@ -76,6 +80,10 @@ Rcpp::loadModule("Kernel", TRUE)
 #' kernel <- Get.Kernel(lengthscale, type="MultiplicativeRQ", parameters=list(alpha=1))
 #' Evaluate.Kernel(kernel, X) 
 #' 
+#' # Multiplicative Inverse Multiquadric (IM)
+#' kernel <- Get.Kernel(lengthscale, type="MultiplicativeIM", parameters=list(alpha=1))
+#' Evaluate.Kernel(kernel, X) 
+#' 
 #' # Multiplicative Generalized Matern
 #' kernel <- Get.Kernel(lengthscale, type="MultiplicativeMatern", parameters=list(nu=2.01))
 #' Evaluate.Kernel(kernel, X)
@@ -100,6 +108,13 @@ Get.Kernel <- function(lengthscale, type, parameters=list()) {
     if (!(is.numeric(alpha) & alpha>0))
       stop("alpha must be positive for RQ Kernel.")
     kernel <- new(RQKernel, lengthscale, alpha)
+  } else if (type == "IM") {
+    if (!("alpha" %in% names(parameters)))
+      stop("alpha must be provided for IM Kernel.")
+    alpha <- parameters[["alpha"]]
+    if (!(is.numeric(alpha) & alpha>0))
+      stop("alpha must be positive for IM Kernel.")
+    kernel <- new(IMKernel, lengthscale, alpha)
   } else if (type == "Matern12") {
     kernel <- new(Matern12Kernel, lengthscale)
   } else if (type == "Matern32") {
@@ -127,6 +142,13 @@ Get.Kernel <- function(lengthscale, type, parameters=list()) {
     if (!(is.numeric(alpha) & alpha>0))
       stop("alpha must be positive for MultiplicativeRQ Kernel.")
     kernel <- new(MultiplicativeRQKernel, lengthscale, alpha)
+  } else if (type == "MultiplicativeIM") {
+    if (!("alpha" %in% names(parameters)))
+      stop("alpha must be provided for MultiplicativeIM Kernel.")
+    alpha <- parameters[["alpha"]]
+    if (!(is.numeric(alpha) & alpha>0))
+      stop("alpha must be positive for MultiplicativeIM Kernel.")
+    kernel <- new(MultiplicativeIMKernel, lengthscale, alpha)
   } else if (type == "MultiplicativeMatern") {
     if (!("nu" %in% names(parameters)))
       stop("nu must be provided for MultiplicativeMatern Kernel.")
@@ -167,7 +189,7 @@ Get.Kernel <- function(lengthscale, type, parameters=list()) {
 #' A Gaussian Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -222,7 +244,7 @@ Gaussian.Kernel <- function(lengthscale) {
 #' A Rational Quadratic (RQ) Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -258,6 +280,64 @@ RQ.Kernel <- function(lengthscale, alpha=1) {
 }
 
 #' @title 
+#' Inverse Multiquadric (IM) Kernel
+#' 
+#' @description
+#' This function specifies the Inverse Multiquadric (IM) kernel.
+#' 
+#' @details
+#' The Inverse Multiquadric (IM) kernel is given by 
+#' \deqn{k(r;\alpha)=\left(1+\frac{r^2}{2}\right)^{-\alpha},}{k(r;alpha) = (1+[r^2/2])^{-alpha},}
+#' where \eqn{\alpha}{alpha} is a positive shape parameter and 
+#' \deqn{r(x,x^{\prime})=\sqrt{\sum_{i=1}^{p}\left(\frac{x_{i}-x_{i}^{\prime}}{l_{i}}\right)^2}}{r(x,x') = sqrt(sum_{i=1}^{p} [(x_i - x'_i) / l_i]^2)} 
+#' is the euclidean distance between \eqn{x}{x} and \eqn{x^{\prime}}{x'} weighted by
+#' the length scale parameters \eqn{l_{i}}{l_i}'s.
+#' 
+#' @param lengthscale a vector for the positive length scale parameters
+#' @param alpha a positive scalar shape parameter that controls the kernel decay
+#' 
+#' @return 
+#' An Inverse Multiquadric (IM) Kernel Class Object.
+#' 
+#' @author 
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
+#' 
+#' @references
+#' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
+#' 
+#' Hardy, R. L. & Göpfert, W. M. (1975). Least squares prediction of gravity anomalies, geoidal undulations, and deflections of the vertical with multiquadric harmonic functions. \emph{Geophysical Research Letters}, 2(10), 423--426. doi:10.1029/GL002i010p00423
+#' 
+#' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
+#' 
+#' @seealso 
+#' \link{MultiplicativeIM.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
+#' 
+#' @export
+#' 
+#' @examples 
+#' n <- 5
+#' p <- 3
+#' X <- matrix(rnorm(n*p), ncol=p)
+#' lengthscale <- c(1:p)
+#' 
+#' # approach 1
+#' kernel <- IM.Kernel(lengthscale, alpha=1)
+#' Evaluate.Kernel(kernel, X)
+#' 
+#' # approach 2
+#' kernel <- Get.Kernel(lengthscale, type="IM", parameters=list(alpha=1))
+#' Evaluate.Kernel(kernel, X) 
+#' 
+IM.Kernel <- function(lengthscale, alpha=1) {
+  if (!(is.vector(lengthscale) & is.numeric(lengthscale) & all(lengthscale>0)))
+    stop("lengthscale must be a vector of positive number.")
+  if (!(is.numeric(alpha) & alpha>0))
+    stop("alpha must be positive for IM Kernel.")
+  kernel <- new(IMKernel, lengthscale, alpha)
+  return (kernel)
+}
+
+#' @title 
 #' Matern(1/2) Kernel
 #' 
 #' @description
@@ -278,7 +358,7 @@ RQ.Kernel <- function(lengthscale, alpha=1) {
 #' A Matern(1/2) Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -331,7 +411,7 @@ Matern12.Kernel <- function(lengthscale) {
 #' A Matern(3/2) Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -384,7 +464,7 @@ Matern32.Kernel <- function(lengthscale) {
 #' A Matern(5/2) Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -441,7 +521,7 @@ Matern52.Kernel <- function(lengthscale) {
 #' A Generalized Matern Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -503,7 +583,7 @@ Matern.Kernel <- function(lengthscale, nu=2.01) {
 #' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @seealso 
 #' \link{MultiplicativeUDF.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
@@ -555,13 +635,11 @@ UDF.Kernel <- function(lengthscale, kernel.function) {
 #' A Multiplicative Rational Quadratic (RQ) Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
-#' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
-#' 
-#' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
-#' 
+#' Song, D. and Joseph, V. R. (2026). "Efficient Active Learning Strategies for Computer Experiments." \emph{Technometrics}, 68, 65-78.
+#'
 #' @seealso 
 #' \link{RQ.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
 #' 
@@ -591,6 +669,64 @@ MultiplicativeRQ.Kernel <- function(lengthscale, alpha=1) {
 }
 
 #' @title 
+#' Multiplicative Inverse Multiquadric (IM) Kernel
+#' 
+#' @description
+#' This function specifies the Multiplicative Inverse Multiquadric (IM) kernel.
+#' 
+#' @details
+#' The Multiplicative Inverse Multiquadric (IM) kernel is given by 
+#' \deqn{k(r;\alpha)=\prod_{i=1}^{p}\left(1+\frac{r_{i}^2}{2}\right)^{-\alpha},}{k(r; alpha) = prod_{i=1}^{p}(1+[r_i^2/2])^{-alpha},}
+#' where \eqn{\alpha}{alpha} is a positive shape parameter and 
+#' \deqn{r_{i}(x,x^{\prime})=\sqrt{\left(\frac{x_{i}-x_{i}^{\prime}}{l_{i}}\right)^2}}{r_i(x,x') = sqrt([(x_i - x'_i) / l_i]^2)} 
+#' is the dimension-wise euclidean distances between \eqn{x}{x} and \eqn{x^{\prime}}{x'} weighted by
+#' the length scale parameters \eqn{l_{i}}{l_i}'s.
+#' 
+#' @param lengthscale a vector for the positive length scale parameters
+#' @param alpha a positive scalar shape parameter that controls the kernel decay
+#' 
+#' @return 
+#' A Multiplicative Inverse Multiquadric (IM) Kernel Class Object.
+#' 
+#' @author 
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
+#' 
+#' @references
+#' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
+#' 
+#' Song, D. & Joseph, V. R. (2026). Efficient Active Learning Strategies for Computer Experiments. \emph{Technometrics}, 68(1), 65--78. doi:10.1080/00401706.2025.2546366
+#' 
+#' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
+#' 
+#' @seealso 
+#' \link{IM.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
+#' 
+#' @export
+#' 
+#' @examples 
+#' n <- 5
+#' p <- 3
+#' X <- matrix(rnorm(n*p), ncol=p)
+#' lengthscale <- c(1:p)
+#' 
+#' # approach 1
+#' kernel <- MultiplicativeIM.Kernel(lengthscale, alpha=1)
+#' Evaluate.Kernel(kernel, X)
+#' 
+#' # approach 2
+#' kernel <- Get.Kernel(lengthscale, type="MultiplicativeIM", parameters=list(alpha=1))
+#' Evaluate.Kernel(kernel, X) 
+#' 
+MultiplicativeIM.Kernel <- function(lengthscale, alpha=1) {
+  if (!(is.vector(lengthscale) & is.numeric(lengthscale) & all(lengthscale>0)))
+    stop("lengthscale must be a vector of positive number.")
+  if (!(is.numeric(alpha) & alpha>0))
+    stop("alpha must be positive for MultiplicativeIM Kernel.")
+  kernel <- new(MultiplicativeIMKernel, lengthscale, alpha)
+  return (kernel)
+}
+
+#' @title 
 #' Multiplicative Generalized Matern Kernel
 #' 
 #' @description
@@ -613,7 +749,7 @@ MultiplicativeRQ.Kernel <- function(lengthscale, alpha=1) {
 #' A Multiplicative Generalized Matern Kernel Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
@@ -674,7 +810,7 @@ MultiplicativeMatern.Kernel <- function(lengthscale, nu=2.01) {
 #' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @seealso 
 #' \link{UDF.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
@@ -720,7 +856,7 @@ MultiplicativeUDF.Kernel <- function(lengthscale, kernel.function) {
 #' The kernel (correlation) matrix of X evaluated by the kernel.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @seealso 
 #' \link{Get.Kernel}.

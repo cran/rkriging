@@ -7,111 +7,125 @@
 
 class Kernel {
     protected:
-        std::size_t p_;
-        std::size_t k_;
+        std::size_t _p;
+        std::size_t _k;
+        virtual double _evaluate(const Eigen::VectorXd& sqdist) const = 0;
+        virtual Eigen::VectorXd _get_lengthscale(const Eigen::VectorXd& log_lengthscale) const = 0;
     public:
-        Kernel() {};
-        std::size_t get_dimension();
-        std::size_t get_log_lengthscale_dimension();
-        Eigen::VectorXd get_lengthscale();
+        Kernel() = default;
+        std::size_t get_dimension() const;
+        std::size_t get_log_lengthscale_dimension() const;
+        Eigen::VectorXd get_lengthscale() const;
         virtual void set_log_lengthscale(const Eigen::VectorXd& log_lengthscale) = 0;
-        virtual Eigen::VectorXd get_log_lengthscale() = 0;
+        virtual Eigen::VectorXd get_log_lengthscale() const = 0;
         virtual void set_lengthscale(const Eigen::VectorXd& lengthscale) = 0;
-        virtual Eigen::VectorXd get_lengthscale(const Eigen::VectorXd& log_lengthscale) = 0;
         virtual void relax_lengthscale_constraint() = 0;
-        virtual double evaluate(const Eigen::VectorXd& sqdist) = 0;
-        Eigen::MatrixXd compute(const Eigen::MatrixXd& X);
-        Eigen::MatrixXd compute(const Eigen::MatrixXd& X, const Eigen::VectorXd& log_lengthscale);
-        Eigen::VectorXd compute(const Eigen::VectorXd& x, const Eigen::MatrixXd& X);
-        ~Kernel() {};
+        Eigen::MatrixXd compute(const Eigen::MatrixXd& X) const;
+        Eigen::MatrixXd compute(const Eigen::MatrixXd& X, const Eigen::VectorXd& log_lengthscale) const;
+        Eigen::VectorXd compute(const Eigen::VectorXd& x, const Eigen::MatrixXd& X) const;
+        virtual ~Kernel() = default;
 };
 
 class BaseKernel : public Kernel {
     protected:
-        Eigen::VectorXd log_lengthscale_;
-        Eigen::VectorXd weight_;
+        Eigen::VectorXd _log_lengthscale;
+        Eigen::VectorXd _weight;
+        double _evaluate(const Eigen::VectorXd& sqdist) const override;
+        Eigen::VectorXd _get_lengthscale(const Eigen::VectorXd& log_lengthscale) const override;
+        virtual double _evaluate(const double& sqdist) const = 0;
     public:
         BaseKernel(const Eigen::VectorXd& lengthscale);
         BaseKernel(const double& lengthscale, const Eigen::VectorXd& weight);
         void set_log_lengthscale(const Eigen::VectorXd& log_lengthscale) override;
-        Eigen::VectorXd get_log_lengthscale() override;
+        Eigen::VectorXd get_log_lengthscale() const override;
         void set_lengthscale(const Eigen::VectorXd& lengthscale) override;
-        Eigen::VectorXd get_lengthscale(const Eigen::VectorXd& log_lengthscale) override;
         void relax_lengthscale_constraint() override;
-        double evaluate(const Eigen::VectorXd& sqdist) override;
-        virtual double evaluate(const double& sqdist) = 0;
 };
 
 class GaussianKernel : public BaseKernel {
+    protected:
+        double _evaluate(const double& sqdist) const override;
     public:
         using BaseKernel::BaseKernel;
-        double evaluate(const double& sqdist) override;
- };
+};
 
 class RQKernel : public BaseKernel {
     protected:
-        double alpha_;
+        double _alpha;
+        double _evaluate(const double& sqdist) const override;
     public:
-        RQKernel(const Eigen::VectorXd& lengthscale, const double& alpha): BaseKernel(lengthscale), alpha_(alpha) {};
-        RQKernel(const double& lengthscale, const Eigen::VectorXd& weight, const double& alpha): BaseKernel(lengthscale,weight), alpha_(alpha) {};
-        double evaluate(const double& sqdist) override;
+        RQKernel(const Eigen::VectorXd& lengthscale, const double& alpha)
+            : BaseKernel(lengthscale), _alpha(alpha) {};
+        RQKernel(const double& lengthscale, const Eigen::VectorXd& weight, const double& alpha)
+            : BaseKernel(lengthscale, weight), _alpha(alpha) {};
+};
+
+class IMKernel : public RQKernel {
+    protected:
+        double _evaluate(const double& sqdist) const override;
+    public:
+        using RQKernel::RQKernel;
 };
 
 class Matern12Kernel : public BaseKernel {
+    protected:
+        double _evaluate(const double& sqdist) const override;
     public:
         using BaseKernel::BaseKernel;
-        double evaluate(const double& sqdist) override;
 };
 
 class Matern32Kernel : public BaseKernel {
+    protected:
+        double _evaluate(const double& sqdist) const override;
     public:
         using BaseKernel::BaseKernel;
-        double evaluate(const double& sqdist) override;
 };
 
 class Matern52Kernel : public BaseKernel {
+    protected:
+        double _evaluate(const double& sqdist) const override;
     public:
         using BaseKernel::BaseKernel;
-        double evaluate(const double& sqdist) override;
 };
 
 class MaternKernel : public BaseKernel {
     protected:
-        double nu_;
+        double _nu;
+        double _evaluate(const double& sqdist) const override;
     public:
-        MaternKernel(const Eigen::VectorXd& lengthscale, const double& nu): BaseKernel(lengthscale), nu_(nu) {};
-        MaternKernel(const double& lengthscale, const Eigen::VectorXd& weight, const double& nu): BaseKernel(lengthscale,weight), nu_(nu) {};
-        double evaluate(const double& sqdist) override;
+        MaternKernel(const Eigen::VectorXd& lengthscale, const double& nu)
+            : BaseKernel(lengthscale), _nu(nu) {};
+        MaternKernel(const double& lengthscale, const Eigen::VectorXd& weight, const double& nu)
+            : BaseKernel(lengthscale, weight), _nu(nu) {};
 };
 
 class UDFKernel : public BaseKernel {
     protected:
-        Rcpp::Function kfunc_;
+        Rcpp::Function _kfunc;
+        double _evaluate(const double& sqdist) const override;
     public:
-        UDFKernel(const Eigen::VectorXd& lengthscale, Rcpp::Function kfunc): BaseKernel(lengthscale), kfunc_(kfunc) {};
-        UDFKernel(const double& lengthscale, const Eigen::VectorXd& weight, Rcpp::Function kfunc): BaseKernel(lengthscale,weight), kfunc_(kfunc) {};
-        double evaluate(const double& sqdist) override;
+        UDFKernel(const Eigen::VectorXd& lengthscale, Rcpp::Function kfunc)
+            : BaseKernel(lengthscale), _kfunc(kfunc) {};
+        UDFKernel(const double& lengthscale, const Eigen::VectorXd& weight, Rcpp::Function kfunc)
+            : BaseKernel(lengthscale, weight), _kfunc(kfunc) {};
 };
 
-class MultiplicativeRQKernel : public RQKernel {
+template<typename BaseKernelType>
+class MultiplicativeKernel : public BaseKernelType {
+    protected:
+        using BaseKernelType::_evaluate;
+        double _evaluate(const Eigen::VectorXd& sqdist) const override {
+            return sqdist.unaryExpr([this](double x) {
+                return BaseKernelType::_evaluate(x);
+            }).prod();
+        }
     public:
-        using RQKernel::RQKernel;
-        using RQKernel::evaluate;
-        double evaluate(const Eigen::VectorXd& sqdist) override;
+        using BaseKernelType::BaseKernelType;
 };
 
-class MultiplicativeMaternKernel : public MaternKernel {
-    public:
-        using MaternKernel::MaternKernel;
-        using MaternKernel::evaluate;
-        double evaluate(const Eigen::VectorXd& sqdist) override;
-};
-
-class MultiplicativeUDFKernel : public UDFKernel {
-    public:
-        using UDFKernel::UDFKernel;
-        using UDFKernel::evaluate;
-        double evaluate(const Eigen::VectorXd& sqdist) override;
-};
+using MultiplicativeRQKernel = MultiplicativeKernel<RQKernel>;
+using MultiplicativeIMKernel = MultiplicativeKernel<IMKernel>;
+using MultiplicativeMaternKernel = MultiplicativeKernel<MaternKernel>;
+using MultiplicativeUDFKernel = MultiplicativeKernel<UDFKernel>;
 
 #endif

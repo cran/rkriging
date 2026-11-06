@@ -10,13 +10,18 @@ Get.Kriging.Parameters(kriging)
 \item{kriging}{a kriging class object}
 }
 \value{
-\item{nllh}{negative log-likelihood of the kriging model}
+\item{loss}{the loss value of the fitted kriging model}
+\item{loss.type}{the loss type used for fitting (NLLH)}
+\item{lengthscale}{the lengthscale of the kernel}
 \item{mu}{mean of the kriging model}
 \item{nu2}{variance of the kriging model}
 \item{sigma2}{variance of the random noise when \code{interpolation=FALSE}}
 \item{beta}{coefficients of the basis functions for universal kriging}
-\item{c}{c for the rational / generalized rational kriging, see Joseph (2024)}
-\item{c0}{c0 for the generalized rational kriging, see Joseph (2024)}
+\item{c}{c for the rational / generalized rational kriging, see Joseph (2025)}
+\item{c0}{c0 for the generalized rational kriging, see Joseph (2025)}
+\item{scale}{whether the model was fitted on scaled inputs}
+\item{scale_min}{training input minima used for scaling, present when \code{scale=TRUE}}
+\item{scale_max}{training input maxima used for scaling, present when \code{scale=TRUE}}
 }
 \description{
 This function can be used for extracting the estimates of the kriging parameters.
@@ -45,15 +50,15 @@ Get.Kriging.Parameters(kriging)
 \references{
 Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 
-Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
+
+Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 
 Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
-
-Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
 }
 \seealso{
 \link{Fit.Kriging}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

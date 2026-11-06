@@ -9,7 +9,7 @@ Get.Kernel(lengthscale, type, parameters = list())
 \arguments{
 \item{lengthscale}{a vector for the positive length scale parameters}
 
-\item{type}{kernel type: Gaussian, RQ, Matern12, Matern32, Matern52, Matern, UDF, MultiplicativeRQ, MultiplicativeMatern, MultiplicativeUDF}
+\item{type}{kernel type: Gaussian, RQ, IM, Matern12, Matern32, Matern52, Matern, UDF, MultiplicativeRQ, MultiplicativeIM, MultiplicativeMatern, MultiplicativeUDF}
 
 \item{parameters}{a list of parameters required for the specific kernel}
 }
@@ -32,6 +32,10 @@ Evaluate.Kernel(kernel, X)
 
 # Rational Quadratic (RQ)
 kernel <- Get.Kernel(lengthscale, type="RQ", parameters=list(alpha=1))
+Evaluate.Kernel(kernel, X) 
+
+# Inverse Multiquadric (IM)
+kernel <- Get.Kernel(lengthscale, type="IM", parameters=list(alpha=1))
 Evaluate.Kernel(kernel, X) 
 
 # Matern(1/2)
@@ -60,6 +64,10 @@ Evaluate.Kernel(kernel, X)
 kernel <- Get.Kernel(lengthscale, type="MultiplicativeRQ", parameters=list(alpha=1))
 Evaluate.Kernel(kernel, X) 
 
+# Multiplicative Inverse Multiquadric (IM)
+kernel <- Get.Kernel(lengthscale, type="MultiplicativeIM", parameters=list(alpha=1))
+Evaluate.Kernel(kernel, X) 
+
 # Multiplicative Generalized Matern
 kernel <- Get.Kernel(lengthscale, type="MultiplicativeMatern", parameters=list(nu=2.01))
 Evaluate.Kernel(kernel, X)
@@ -77,11 +85,11 @@ Duvenaud, D. (2014). \emph{The kernel cookbook: Advice on covariance functions}.
 Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
 }
 \seealso{
-\link{Evaluate.Kernel}, \link{Gaussian.Kernel}, \link{RQ.Kernel}, 
+\link{Evaluate.Kernel}, \link{Gaussian.Kernel}, \link{RQ.Kernel}, \link{IM.Kernel},
 \link{Matern12.Kernel}, \link{Matern32.Kernel}, \link{Matern52.Kernel}
 \link{Matern.Kernel}, \link{UDF.Kernel},
-\link{MultiplicativeRQ.Kernel}, \link{MultiplicativeMatern.Kernel}, \link{MultiplicativeUDF.Kernel}.
+\link{MultiplicativeRQ.Kernel}, \link{MultiplicativeIM.Kernel}, \link{MultiplicativeMatern.Kernel}, \link{MultiplicativeUDF.Kernel}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

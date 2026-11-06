@@ -48,5 +48,5 @@ Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine 
 \link{Matern.Kernel}, \link{Get.Kernel}, \link{Evaluate.Kernel}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

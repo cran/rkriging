@@ -33,5 +33,5 @@ Evaluate.Kernel(kernel, X)
 \link{Get.Kernel}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

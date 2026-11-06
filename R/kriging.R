@@ -48,6 +48,37 @@ Get.Lengthscale <- function(X, lengthscale=list(value=NULL,lower.bound=NULL,uppe
 }
 
 #' @noRd
+Scale.Kriging.Input <- function(X, scale.min, scale.max) {
+  scale.range <- scale.max - scale.min
+  sweep(sweep(X, 2L, scale.min, "-"), 2L, scale.range, "/")
+}
+
+#' @noRd
+Unscale.Kriging.Input <- function(X, scale.min, scale.max) {
+  scale.range <- scale.max - scale.min
+  sweep(sweep(X, 2L, scale.range, "*"), 2L, scale.min, "+")
+}
+
+#' @noRd
+Get.Scale.Info <- function(object, dimension=NULL, object.name="object") {
+  scale.min <- attr(object, "scale_min", exact=TRUE)
+  scale.max <- attr(object, "scale_max", exact=TRUE)
+  has.scale.bounds <- !is.null(scale.min) && !is.null(scale.max)
+  uses.scale <- isTRUE(attr(object, "scale", exact=TRUE)) || has.scale.bounds
+  if (!uses.scale)
+    return (NULL)
+  if (!has.scale.bounds)
+    stop(sprintf("scaled %s objects must contain scale_min and scale_max attributes.", object.name))
+  if (!is.numeric(scale.min) || !is.numeric(scale.max) ||
+      any(!is.finite(scale.min)) || any(!is.finite(scale.max)) ||
+      any(scale.max <= scale.min))
+    stop("scale_min and scale_max attributes must be finite numeric vectors with scale_max > scale_min.")
+  if (!is.null(dimension) && (length(scale.min) != dimension || length(scale.max) != dimension))
+    stop(sprintf("scale_min and scale_max attributes must match the %s dimension (%d).", object.name, dimension))
+  return (list(min=scale.min, max=scale.max))
+}
+
+#' @noRd
 Set.Kriging.NLOPT.Parameters <- function(kriging, nlopt.parameters=list()) {
   if (!grepl("^Rcpp.*Kriging$", class(kriging)))
     stop("An invalid kriging object is provided.")
@@ -88,6 +119,12 @@ Set.Kriging.NLOPT.Parameters <- function(kriging, nlopt.parameters=list()) {
       stop(sprintf("nlopt optimization maximum evaluation must be a positive integer."))
     kriging$set_nlopt_maxeval(nlopt.maxeval)
   }
+  if ("population" %in% names(nlopt.parameters)) {
+    nlopt.population <- as.integer(nlopt.parameters[["population"]])
+    if (nlopt.population <= 0) 
+      stop(sprintf("nlopt optimization population size must be a positive integer."))
+    kriging$set_nlopt_population(nlopt.population)
+  }
   return (kriging)
 }
 
@@ -102,7 +139,7 @@ Set.Kriging.NLOPT.Parameters <- function(kriging, nlopt.parameters=list()) {
 #' @details 
 #' Kriging gives the best linear unbiased predictor given the data. 
 #' It can also be given a Bayesian interpretation by assuming a Gaussian process (GP) prior for the underlying function.
-#' Please see Santner et al. (2003), Rasmussen and Williams (2006), and Joseph (2024) for details.
+#' Please see Santner et al. (2003), Rasmussen and Williams (2006), Joseph (2025), and Joseph (2026) for details.
 #' 
 #' For data from deterministic computer experiments, use \code{interpolation=TRUE} and will give an interpolator. 
 #' For noisy data, use \code{interpolation=FALSE}, which will give an approximator of the underlying function.
@@ -133,26 +170,31 @@ Set.Kriging.NLOPT.Parameters <- function(kriging, nlopt.parameters=list()) {
 #' @param y a vector for output (target), only one-dimensional output is supported
 #' @param interpolation whether to interpolate, for noisy data please set \code{interpolate=FALSE}
 #' @param fit whether to fit the length scale parameters from data 
+#' @param nugget an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling
 #' @param model choice of kriging model: OK, UK, LK, RK, GRK
 #' @param model.parameters a list of parameters required for the specific kriging model, e.g. basis functions for universal kriging
 #' @param kernel a kernel class object
 #' @param kernel.parameters a list of parameters required for the kernel, if no kernel class object is provided
 #' @param nlopt.parameters a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation
+#' @param scale whether to scale each input dimension to \code{[0, 1]} before fitting. When \code{TRUE}, the training minima and maxima are stored in the returned object and reused by \link{Predict.Kriging}.
 #' 
 #' @return 
-#' A Kriging Class Object.
+#' A Kriging Class Object. When \code{scale=TRUE}, the returned object stores the training input minima and maxima as \code{scale_min} and \code{scale_max} attributes.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
+#' Santner, T. J., Williams, B. J., & Notz, W. I. (2003). \emph{The Design and Analysis of Computer Experiments}. Springer.
+#'
 #' Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 #' 
-#' Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+#' Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
 #' 
+#' Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
+#'
 #' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
 #' 
-#' Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
 #' 
 #' @seealso 
 #' \link{Predict.Kriging}, \link{Get.Kriging.Parameters}, \link{Get.Kernel}, 
@@ -334,22 +376,39 @@ Set.Kriging.NLOPT.Parameters <- function(kriging, nlopt.parameters=list()) {
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' Get.Kriging.Parameters(kriging)
 #' 
-Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
-                        model="OK", model.parameters=list(), 
-                        kernel=NULL, kernel.parameters=list(), 
-                        nlopt.parameters=list()) {
+Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE, 
+                        nugget=NULL,
+                        model="OK", model.parameters=list(),
+                        kernel=NULL, kernel.parameters=list(),
+                        nlopt.parameters=list(),
+                        scale=FALSE) {
   # check inputs
   if (!is.matrix(X)) X <- as.matrix(X)
   if (is.matrix(y)) y <- c(y)
   if (!is.character(model)) 
     stop("kriging model must be a string.")
+  if (!(is.logical(scale) & length(scale) == 1 & !is.na(scale)))
+    stop("scale must be TRUE or FALSE.")
+  scale.flag <- isTRUE(scale)
+  scale.min <- NULL
+  scale.max <- NULL
+  if (scale.flag) {
+    if (!is.numeric(X) || any(!is.finite(X)))
+      stop("scale = TRUE requires X to be a finite numeric matrix.")
+    scale.min <- apply(X, 2L, min)
+    scale.max <- apply(X, 2L, max)
+    scale.range <- scale.max - scale.min
+    if (any(!is.finite(scale.range)) || any(scale.range <= 0))
+      stop("scale = TRUE requires every column of X to have positive range.")
+    X <- Scale.Kriging.Input(X, scale.min, scale.max)
+  }
   # get lengthscale parameters if not provided
   lengthscale <- list(
     value = kernel.parameters[["lengthscale"]],
     lower.bound = kernel.parameters[["lengthscale.lower.bound"]],
     upper.bound = kernel.parameters[["lengthscale.upper.bound"]]
   )
-  if (fit) lengthscale <- Get.Lengthscale(X, lengthscale)
+  lengthscale <- Get.Lengthscale(X, lengthscale)
   # get kernel class
   if (is.null(kernel)) {
     if (!("type" %in% names(kernel.parameters))) 
@@ -371,13 +430,13 @@ Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
   }
   # initialize kriging class
   if (model == "OK") {
-    kriging <- new(OrdinaryKriging, X, y, kernel, interpolation)
+    kriging <- new(OrdinaryKriging, X, y, kernel, interpolation, "NLLH")
   } else if (model == "LK") {
-    kriging <- new(LimitKriging, X, y, kernel, interpolation)
+    kriging <- new(LimitKriging, X, y, kernel, interpolation, "NLLH")
   } else if (model == "RK") {
-    kriging <- new(RationalKriging, X, y, kernel, interpolation)
+    kriging <- new(RationalKriging, X, y, kernel, interpolation, "NLLH")
   } else if (model == "GRK") {
-    kriging <- new(GeneralizedRationalKriging, X, y, kernel, interpolation)
+    kriging <- new(GeneralizedRationalKriging, X, y, kernel, interpolation, "NLLH")
   } else if (model == "UK") {
     if (!("basis.function" %in% names(model.parameters)))
       stop("basis.function must be provided for Universal Kriging (UK).")
@@ -385,18 +444,21 @@ Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
     if (!is.function(basis.function))
       stop("basis.function must a function for Universal Kriging (UK).")
     no.basis.function <- length(basis.function(X[1,]))
-    kriging <- new(UniversalKriging, X, y, kernel, interpolation, no.basis.function, basis.function)
+    kriging <- new(UniversalKriging, X, y, kernel, interpolation, no.basis.function, basis.function, "NLLH")
   } else {
     stop(sprintf("No Kriging class %s.", model))
   }
-  if (fit) {
-    # set nlopt parameters 
-    kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
-    # fit kriging
-    kriging$fit(lengthscale$lower.bound, lengthscale$upper.bound)
-  } else {
-    # compute kriging parameters for the given lengthscale
-    kriging$set_kriging_parameters()
+  # update nugget if provided
+  if (!is.null(nugget)) kriging$set_nugget(nugget)
+  # set nlopt parameters 
+  kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
+  # fit kriging
+  kriging$set_lengthscale_bound(lengthscale$lower.bound, lengthscale$upper.bound)
+  kriging$fit(fit)
+  attr(kriging, "scale") <- scale.flag
+  if (scale.flag) {
+    attr(kriging, "scale_min") <- scale.min
+    attr(kriging, "scale_max") <- scale.max
   }
   return (kriging)
 }
@@ -408,7 +470,7 @@ Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' This functions fits the ordinary kriging model to the data.
 #' 
 #' @details
-#' Ordinary kriging assumes a constant mean. Please see Santner et al. (2003) for details.
+#' Ordinary kriging assumes a constant mean. Please see Joseph (2026) for details.
 #' 
 #' For data from deterministic computer experiments, use \code{interpolation=TRUE} and will give an interpolator. 
 #' For noisy data, use \code{interpolation=FALSE}, which will give an approximator of the underlying function.
@@ -434,6 +496,7 @@ Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' @param y a vector for output (target), only one-dimensional output is supported
 #' @param interpolation interpolation whether to interpolate, for noisy data please set \code{interpolate=FALSE}
 #' @param fit whether to fit the length scale parameters from data 
+#' @param nugget an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling
 #' @param kernel a kernel class object 
 #' @param kernel.parameters a list of parameters required for the kernel, if no kernel class object is provided
 #' @param nlopt.parameters a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation
@@ -442,10 +505,10 @@ Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' A Ordinary Kriging Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
-#' Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
+#' Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 #' 
 #' @seealso 
 #' \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
@@ -491,9 +554,10 @@ Fit.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' Get.Kriging.Parameters(kriging)
 #' 
-Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
-                            kernel=NULL, kernel.parameters=list(), 
-                            nlopt.parameters=list()) {
+Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE, 
+                             nugget=NULL,
+                             kernel=NULL, kernel.parameters=list(),
+                             nlopt.parameters=list()) {
   # check inputs
   if (!is.matrix(X)) X <- as.matrix(X)
   if (is.matrix(y)) y <- c(y)
@@ -503,7 +567,7 @@ Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
     lower.bound = kernel.parameters[["lengthscale.lower.bound"]],
     upper.bound = kernel.parameters[["lengthscale.upper.bound"]]
   )
-  if (fit) lengthscale <- Get.Lengthscale(X, lengthscale)
+  lengthscale <- Get.Lengthscale(X, lengthscale)
   # get kernel class
   if (is.null(kernel)) {
     if (!("type" %in% names(kernel.parameters))) 
@@ -519,16 +583,14 @@ Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
                    ncol(X), kernel$get_dimension()))
   }
   # initialize kriging class
-  kriging <- new(OrdinaryKriging, X, y, kernel, interpolation)
-  if (fit) {
-    # set nlopt parameters 
-    kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
-    # fit kriging
-    kriging$fit(lengthscale$lower.bound, lengthscale$upper.bound)
-  } else {
-    # compute kriging parameters for the given lengthscale
-    kriging$set_kriging_parameters()
-  }
+  kriging <- new(OrdinaryKriging, X, y, kernel, interpolation, "NLLH")
+  # update nugget if provided
+  if (!is.null(nugget)) kriging$set_nugget(nugget)
+  # set nlopt parameters 
+  kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
+  # fit kriging
+  kriging$set_lengthscale_bound(lengthscale$lower.bound, lengthscale$upper.bound)
+  kriging$fit(fit)
   return (kriging)
 }
 
@@ -562,6 +624,7 @@ Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' @param X a matrix for input (feature)
 #' @param y a vector for output (target), only one-dimensional output is supported
 #' @param fit whether to fit the length scale parameters from data 
+#' @param nugget an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling
 #' @param kernel a kernel class object 
 #' @param kernel.parameters a list of parameters required for the kernel, if no kernel class object is provided
 #' @param nlopt.parameters a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation
@@ -570,7 +633,7 @@ Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' A Limit Kriging Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
@@ -618,8 +681,8 @@ Ordinary.Kriging <- function(X, y, interpolation=TRUE, fit=TRUE,
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' Get.Kriging.Parameters(kriging)
 #' 
-Limit.Kriging <- function(X, y, fit=TRUE, 
-                          kernel=NULL, kernel.parameters=list(), 
+Limit.Kriging <- function(X, y, fit=TRUE, nugget=NULL,
+                          kernel=NULL, kernel.parameters=list(),
                           nlopt.parameters=list()) {
   # only interpolation is supported for the first release
   interpolation <- TRUE
@@ -632,7 +695,7 @@ Limit.Kriging <- function(X, y, fit=TRUE,
     lower.bound = kernel.parameters[["lengthscale.lower.bound"]],
     upper.bound = kernel.parameters[["lengthscale.upper.bound"]]
   )
-  if (fit) lengthscale <- Get.Lengthscale(X, lengthscale)
+  lengthscale <- Get.Lengthscale(X, lengthscale)
   # get kernel class
   if (is.null(kernel)) {
     if (!("type" %in% names(kernel.parameters))) 
@@ -648,16 +711,14 @@ Limit.Kriging <- function(X, y, fit=TRUE,
                    ncol(X), kernel$get_dimension()))
   }
   # initialize kriging class
-  kriging <- new(LimitKriging, X, y, kernel, interpolation)
-  if (fit) {
-    # set nlopt parameters 
-    kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
-    # fit kriging
-    kriging$fit(lengthscale$lower.bound, lengthscale$upper.bound)
-  } else {
-    # compute kriging parameters for the given lengthscale
-    kriging$set_kriging_parameters()
-  }
+  kriging <- new(LimitKriging, X, y, kernel, interpolation, "NLLH")
+  # update nugget if provided
+  if (!is.null(nugget)) kriging$set_nugget(nugget)
+  # set nlopt parameters 
+  kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
+  # fit kriging
+  kriging$set_lengthscale_bound(lengthscale$lower.bound, lengthscale$upper.bound)
+  kriging$fit(fit)
   return (kriging)
 }
 
@@ -669,7 +730,7 @@ Limit.Kriging <- function(X, y, fit=TRUE,
 #' 
 #' @details
 #' Universal kriging permits a more general function of mean, which can be specified using \code{basis.function}. 
-#' Please see Santner et al. (2003) for details.
+#' Please see Joseph (2006) for details.
 #' 
 #' For data from deterministic computer experiments, use \code{interpolation=TRUE} and will give an interpolator. 
 #' For noisy data, use \code{interpolation=FALSE}, which will give an approximator of the underlying function.
@@ -696,6 +757,7 @@ Limit.Kriging <- function(X, y, fit=TRUE,
 #' @param basis.function the basis functions for specifying the prior mean
 #' @param interpolation interpolation whether to interpolate, for noisy data please set \code{interpolate=FALSE}
 #' @param fit whether to fit the length scale parameters from data 
+#' @param nugget an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling
 #' @param kernel a kernel class object 
 #' @param kernel.parameters a list of parameters required for the kernel, if no kernel class object is provided
 #' @param nlopt.parameters a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation
@@ -704,10 +766,10 @@ Limit.Kriging <- function(X, y, fit=TRUE,
 #' A Universal Kriging Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
-#' Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
+#' Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 #' 
 #' @seealso 
 #' \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
@@ -756,8 +818,9 @@ Limit.Kriging <- function(X, y, fit=TRUE,
 #' lines(newX, pred$mean-2*pred$sd, col="red", lty=3)
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' Get.Kriging.Parameters(kriging)
-Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE,
-                              kernel=NULL, kernel.parameters=list(), 
+Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE, 
+                              nugget=NULL,
+                              kernel=NULL, kernel.parameters=list(),
                               nlopt.parameters=list()) {
   # check inputs
   if (!is.matrix(X)) X <- as.matrix(X)
@@ -768,7 +831,7 @@ Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE
     lower.bound = kernel.parameters[["lengthscale.lower.bound"]],
     upper.bound = kernel.parameters[["lengthscale.upper.bound"]]
   )
-  if (fit) lengthscale <- Get.Lengthscale(X, lengthscale)
+  lengthscale <- Get.Lengthscale(X, lengthscale)
   # get kernel class
   if (is.null(kernel)) {
     if (!("type" %in% names(kernel.parameters))) 
@@ -787,16 +850,14 @@ Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE
   if (!is.function(basis.function))
     stop("basis.function must a function for Universal Kriging (UK).")
   no.basis.function <- length(basis.function(X[1,]))
-  kriging <- new(UniversalKriging, X, y, kernel, interpolation, no.basis.function, basis.function)
-  if (fit) {
-    # set nlopt parameters 
-    kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
-    # fit kriging
-    kriging$fit(lengthscale$lower.bound, lengthscale$upper.bound)
-  } else {
-    # compute kriging parameters for the given lengthscale
-    kriging$set_kriging_parameters()
-  }
+  kriging <- new(UniversalKriging, X, y, kernel, interpolation, no.basis.function, basis.function, "NLLH")
+  # update nugget if provided
+  if (!is.null(nugget)) kriging$set_nugget(nugget)
+  # set nlopt parameters 
+  kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
+  # fit kriging
+  kriging$set_lengthscale_bound(lengthscale$lower.bound, lengthscale$upper.bound)
+  kriging$fit(fit)
   return (kriging)
 }
 
@@ -808,7 +869,7 @@ Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE
 #' 
 #' @details
 #' Rational kriging gives a rational predictor in terms of the inputs, which gives a more stable estimate of the mean. 
-#' Please see Joseph (2024) for details.
+#' Please see Joseph (2025) for details.
 #' Only interpolation is available. Noisy output is not supported for rational kriging.  
 #' 
 #' The kernel choices are required and can be specified by 
@@ -831,6 +892,7 @@ Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE
 #' @param X a matrix for input (feature)
 #' @param y a vector for output (target), only one-dimensional output is supported
 #' @param fit whether to fit the length scale parameters from data 
+#' @param nugget an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling
 #' @param kernel a kernel class object 
 #' @param kernel.parameters a list of parameters required for the kernel, if no kernel class object is provided
 #' @param nlopt.parameters a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation
@@ -839,10 +901,10 @@ Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE
 #' A Rational Kriging Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
-#' Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+#' Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
 #' 
 #' @seealso 
 #' \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
@@ -887,8 +949,8 @@ Universal.Kriging <- function(X, y, basis.function, interpolation=TRUE, fit=TRUE
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' Get.Kriging.Parameters(kriging)
 #' 
-Rational.Kriging <- function(X, y, fit=TRUE,
-                             kernel=NULL, kernel.parameters=list(), 
+Rational.Kriging <- function(X, y, fit=TRUE, nugget=NULL,
+                             kernel=NULL, kernel.parameters=list(),
                              nlopt.parameters=list()) {
   # only interpolation is supported for the first release
   interpolation <- TRUE
@@ -901,7 +963,7 @@ Rational.Kriging <- function(X, y, fit=TRUE,
     lower.bound = kernel.parameters[["lengthscale.lower.bound"]],
     upper.bound = kernel.parameters[["lengthscale.upper.bound"]]
   )
-  if (fit) lengthscale <- Get.Lengthscale(X, lengthscale)
+  lengthscale <- Get.Lengthscale(X, lengthscale)
   # get kernel class
   if (is.null(kernel)) {
     if (!("type" %in% names(kernel.parameters))) 
@@ -917,16 +979,14 @@ Rational.Kriging <- function(X, y, fit=TRUE,
                    ncol(X), kernel$get_dimension()))
   }
   # initialize kriging class
-  kriging <- new(RationalKriging, X, y, kernel, interpolation)
-  if (fit) {
-    # set nlopt parameters 
-    kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
-    # fit kriging
-    kriging$fit(lengthscale$lower.bound, lengthscale$upper.bound)
-  } else {
-    # compute kriging parameters for the given lengthscale
-    kriging$set_kriging_parameters()
-  }
+  kriging <- new(RationalKriging, X, y, kernel, interpolation, "NLLH")
+  # update nugget if provided
+  if (!is.null(nugget)) kriging$set_nugget(nugget)
+  # set nlopt parameters 
+  kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
+  # fit kriging
+  kriging$set_lengthscale_bound(lengthscale$lower.bound, lengthscale$upper.bound)
+  kriging$fit(fit)
   return (kriging)
 }
 
@@ -938,7 +998,7 @@ Rational.Kriging <- function(X, y, fit=TRUE,
 #' 
 #' @details
 #' Ordinary kriging and rational kriging can be obtained as special cases of generalized rational kriging. 
-#' Please see Joseph (2024) for details. 
+#' Please see Joseph (2025) for details. 
 #' The \href{https://spectralib.org/}{Spectra} library is used for fast computation of the first eigenvalues/vectors. 
 #' Only interpolation is available. Noisy output is not supported for generalized rational kriging.  
 #' 
@@ -962,6 +1022,7 @@ Rational.Kriging <- function(X, y, fit=TRUE,
 #' @param X a matrix for input (feature)
 #' @param y a vector for output (target), only one-dimensional output is supported
 #' @param fit whether to fit the length scale parameters from data 
+#' @param nugget an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling
 #' @param kernel a kernel class object 
 #' @param kernel.parameters a list of parameters required for the kernel, if no kernel class object is provided
 #' @param nlopt.parameters a list of parameters required for NLopt, including choice of optimization algorithm and maximum number of evaluation
@@ -970,10 +1031,10 @@ Rational.Kriging <- function(X, y, fit=TRUE,
 #' A Generalized Rational Kriging Class Object.
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
-#' Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+#' Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
 #' 
 #' Qiu, Y., Guennebaud, G., & Niesen, J. (2015). Spectra: C++ library for large scale eigenvalue problems.
 #' 
@@ -1021,8 +1082,8 @@ Rational.Kriging <- function(X, y, fit=TRUE,
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' Get.Kriging.Parameters(kriging)
 #' 
-Generalized.Rational.Kriging <- function(X, y, fit=TRUE,  
-                                         kernel=NULL, kernel.parameters=list(), 
+Generalized.Rational.Kriging <- function(X, y, fit=TRUE, nugget=NULL,
+                                         kernel=NULL, kernel.parameters=list(),
                                          nlopt.parameters=list()) {
   # only interpolation is supported for the first release
   interpolation <- TRUE
@@ -1035,7 +1096,7 @@ Generalized.Rational.Kriging <- function(X, y, fit=TRUE,
     lower.bound = kernel.parameters[["lengthscale.lower.bound"]],
     upper.bound = kernel.parameters[["lengthscale.upper.bound"]]
   )
-  if (fit) lengthscale <- Get.Lengthscale(X, lengthscale)
+  lengthscale <- Get.Lengthscale(X, lengthscale)
   # get kernel class
   if (is.null(kernel)) {
     if (!("type" %in% names(kernel.parameters))) 
@@ -1051,16 +1112,15 @@ Generalized.Rational.Kriging <- function(X, y, fit=TRUE,
                    ncol(X), kernel$get_dimension()))
   }
   # initialize kriging class
-  kriging <- new(GeneralizedRationalKriging, X, y, kernel, interpolation)
-  if (fit) {
-    # set nlopt parameters 
-    kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
-    # fit kriging
-    kriging$fit(lengthscale$lower.bound, lengthscale$upper.bound)
-  } else {
-    # compute kriging parameters for the given lengthscale
-    kriging$set_kriging_parameters()
-  }
+  kriging <- new(GeneralizedRationalKriging, X, y, kernel, interpolation, "NLLH")
+  # update nugget if provided
+  if (!is.null(nugget)) kriging$set_nugget(nugget)
+  # set nlopt parameters 
+  kriging <- Set.Kriging.NLOPT.Parameters(kriging, nlopt.parameters)
+  # set lengthscale bound
+  kriging$set_lengthscale_bound(lengthscale$lower.bound, lengthscale$upper.bound)
+  # fit kriging
+  kriging$fit(fit)
   return (kriging)
 }
 
@@ -1072,22 +1132,26 @@ Generalized.Rational.Kriging <- function(X, y, fit=TRUE,
 #' 
 #' @param kriging a kriging class object
 #' @param X a matrix for the new input (features) to perform predictions
+#' @param Neumann whether to use the Neumann series approximation for prediction when the fitted model interpolates; default is \code{FALSE}, which uses the current fast implementation. This approximation is only recommended when the nugget is larger than \eqn{10^{-6}}.
+#'
+#' @details
+#' If \code{kriging} was fitted with \code{scale=TRUE} in \link{Fit.Kriging}, \code{X} is scaled to \code{[0, 1]} using the training minima and maxima stored in the fitted object before prediction.
 #' 
 #' @return 
 #' \item{mean}{kriging mean computed at the new input}
 #' \item{sd}{kriging standard computed at the new input}
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @references
 #' Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 #' 
-#' Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+#' Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
+#'
+#' Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 #' 
 #' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
-#' 
-#' Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
 #' 
 #' @seealso 
 #' \link{Fit.Kriging}.
@@ -1120,13 +1184,24 @@ Generalized.Rational.Kriging <- function(X, y, fit=TRUE,
 #' lines(newX, pred$mean-2*pred$sd, col="red", lty=3)
 #' lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 #' 
-Predict.Kriging <- function(kriging, X) {
+Predict.Kriging <- function(kriging, X, Neumann=FALSE) {
   if (!grepl("^Rcpp.*Kriging$", class(kriging)))
     stop("An invalid kriging object is provided.")
   if (!is.matrix(X)) X <- as.matrix(X)
   if (ncol(X) != kriging$get_dimension())
     stop(sprintf("Dimension of X (%d) does not match with the kriging dimension (%d).", 
                  ncol(X), kriging$get_dimension()))
+  scale.info <- Get.Scale.Info(kriging, ncol(X), "kriging")
+  if (!is.null(scale.info)) {
+    if (!is.numeric(X) || any(!is.finite(X)))
+      stop("X must be a finite numeric matrix for prediction from a scaled kriging object.")
+    X <- Scale.Kriging.Input(X, scale.info$min, scale.info$max)
+  }
+  if (!(is.logical(Neumann) & length(Neumann) == 1 & !is.na(Neumann)))
+    stop("Neumann must be TRUE or FALSE.")
+  if (Neumann) {
+    return (kriging$predict_neumann(X))
+  }
   return (kriging$predict(X))
 }
 
@@ -1139,16 +1214,21 @@ Predict.Kriging <- function(kriging, X) {
 #' @param kriging a kriging class object
 #' 
 #' @return 
-#' \item{nllh}{negative log-likelihood of the kriging model}
+#' \item{loss}{the loss value of the fitted kriging model}
+#' \item{loss.type}{the loss type used for fitting (NLLH)}
+#' \item{lengthscale}{the lengthscale of the kernel}
 #' \item{mu}{mean of the kriging model}
 #' \item{nu2}{variance of the kriging model}
 #' \item{sigma2}{variance of the random noise when \code{interpolation=FALSE}}
 #' \item{beta}{coefficients of the basis functions for universal kriging}
-#' \item{c}{c for the rational / generalized rational kriging, see Joseph (2024)}
-#' \item{c0}{c0 for the generalized rational kriging, see Joseph (2024)}
+#' \item{c}{c for the rational / generalized rational kriging, see Joseph (2025)}
+#' \item{c0}{c0 for the generalized rational kriging, see Joseph (2025)}
+#' \item{scale}{whether the model was fitted on scaled inputs}
+#' \item{scale_min}{training input minima used for scaling, present when \code{scale=TRUE}}
+#' \item{scale_max}{training input maxima used for scaling, present when \code{scale=TRUE}}
 #' 
 #' @author 
-#' Chaofan Huang and V. Roshan Joseph
+#' Chaofan Huang, Difan Song, and V. Roshan Joseph
 #' 
 #' @seealso 
 #' \link{Fit.Kriging}.
@@ -1156,11 +1236,11 @@ Predict.Kriging <- function(kriging, X) {
 #' @references
 #' Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 #' 
-#' Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
-#' 
+#' Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
+#'
+#' Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
+#'
 #' Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
-#' 
-#' Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
 #' 
 #' @export
 #' 
@@ -1189,7 +1269,8 @@ Get.Kriging.Parameters <- function(kriging) {
   if (!grepl("^Rcpp.*Kriging$", class(kriging)))
     stop("An invalid kriging object is provided.")
   kriging.parameters <- list(
-    "nllh" = kriging$get_nllh(),
+    "loss" = kriging$get_loss(),
+    "loss.type" = kriging$get_loss_type(),
     "lengthscale" = kriging$get_lengthscale(),
     "mu" = kriging$get_mu(),
     "nu2" = kriging$get_nu2(),
@@ -1204,6 +1285,12 @@ Get.Kriging.Parameters <- function(kriging) {
   if (inherits(kriging, "Rcpp_GeneralizedRationalKriging")) {
     kriging.parameters[["c0"]] <- kriging$get_c0()
     kriging.parameters[["c"]] <- kriging$get_c()
+  }
+  scale.info <- Get.Scale.Info(kriging, kriging$get_dimension(), "kriging")
+  if (!is.null(scale.info)) {
+    kriging.parameters[["scale"]] <- TRUE
+    kriging.parameters[["scale_min"]] <- scale.info$min
+    kriging.parameters[["scale_max"]] <- scale.info$max
   }
   return (kriging.parameters)
 }

@@ -8,6 +8,7 @@ Rational.Kriging(
   X,
   y,
   fit = TRUE,
+  nugget = NULL,
   kernel = NULL,
   kernel.parameters = list(),
   nlopt.parameters = list()
@@ -19,6 +20,8 @@ Rational.Kriging(
 \item{y}{a vector for output (target), only one-dimensional output is supported}
 
 \item{fit}{whether to fit the length scale parameters from data}
+
+\item{nugget}{an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling}
 
 \item{kernel}{a kernel class object}
 
@@ -34,7 +37,7 @@ This functions fits the rational kriging model to the data.
 }
 \details{
 Rational kriging gives a rational predictor in terms of the inputs, which gives a more stable estimate of the mean. 
-Please see Joseph (2024) for details.
+Please see Joseph (2025) for details.
 Only interpolation is available. Noisy output is not supported for rational kriging.  
 
 The kernel choices are required and can be specified by 
@@ -93,11 +96,11 @@ Get.Kriging.Parameters(kriging)
 
 }
 \references{
-Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
 }
 \seealso{
 \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

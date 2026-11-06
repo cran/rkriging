@@ -8,6 +8,7 @@ Limit.Kriging(
   X,
   y,
   fit = TRUE,
+  nugget = NULL,
   kernel = NULL,
   kernel.parameters = list(),
   nlopt.parameters = list()
@@ -19,6 +20,8 @@ Limit.Kriging(
 \item{y}{a vector for output (target), only one-dimensional output is supported}
 
 \item{fit}{whether to fit the length scale parameters from data}
+
+\item{nugget}{an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling}
 
 \item{kernel}{a kernel class object}
 
@@ -98,5 +101,5 @@ Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

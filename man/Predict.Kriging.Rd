@@ -4,12 +4,14 @@
 \alias{Predict.Kriging}
 \title{Kriging Prediction}
 \usage{
-Predict.Kriging(kriging, X)
+Predict.Kriging(kriging, X, Neumann = FALSE)
 }
 \arguments{
 \item{kriging}{a kriging class object}
 
 \item{X}{a matrix for the new input (features) to perform predictions}
+
+\item{Neumann}{whether to use the Neumann series approximation for prediction when the fitted model interpolates; default is \code{FALSE}, which uses the current fast implementation. This approximation is only recommended when the nugget is larger than \eqn{10^{-6}}.}
 }
 \value{
 \item{mean}{kriging mean computed at the new input}
@@ -17,6 +19,9 @@ Predict.Kriging(kriging, X)
 }
 \description{
 This function gives prediction and uncertainty quantification of the kriging model on a new input.
+}
+\details{
+If \code{kriging} was fitted with \code{scale=TRUE} in \link{Fit.Kriging}, \code{X} is scaled to \code{[0, 1]} using the training minima and maxima stored in the fitted object before prediction.
 }
 \examples{
 # one dimensional example 
@@ -47,15 +52,15 @@ lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 \references{
 Joseph, V. R. (2006). \emph{Limit kriging}. Technometrics, 48(4), 458-466.
 
-Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
+
+Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 
 Rasmussen, C. E. & Williams, C. K. (2006). \emph{Gaussian Processes for Machine Learning}. The MIT Press.
-
-Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
 }
 \seealso{
 \link{Fit.Kriging}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

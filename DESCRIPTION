@@ -1,12 +1,16 @@
 Package: rkriging
 Type: Package
 Title: Kriging Modeling
-Version: 1.0.2
+Version: 1.1.0
 Authors@R: c(
     person(given = "Chaofan",
            family = "Huang",
-           role = c("aut", "cre"),
+           role = c("aut"),
            email = "10billhuang01@gmail.com"),
+    person(given = "Difan",
+           family = "Song",
+           role = c("aut", "cre"),
+           email = "dfsong96@gmail.com"),
     person(given = "V. Roshan",
            family = "Joseph",
            role = c("aut"),
@@ -19,11 +23,12 @@ Imports: Rcpp, nloptr (>= 1.2.0), methods, stats
 LinkingTo: Rcpp, RcppEigen (>= 0.3.3.5.0), BH (>= 1.75.0.0), nloptr (>=
         1.2.0)
 Encoding: UTF-8
-RoxygenNote: 7.1.2
+Config/roxygen2/version: 8.1.0
 NeedsCompilation: yes
-Packaged: 2025-03-28 07:08:01 UTC; billhuang
-Author: Chaofan Huang [aut, cre],
+Packaged: 2026-11-05 23:05:10 UTC; Difan
+Author: Chaofan Huang [aut],
+  Difan Song [aut, cre],
   V. Roshan Joseph [aut]
-Maintainer: Chaofan Huang <10billhuang01@gmail.com>
+Maintainer: Difan Song <dfsong96@gmail.com>
 Repository: CRAN
-Date/Publication: 2025-03-28 07:40:01 UTC
+Date/Publication: 2026-11-06 09:50:02 UTC

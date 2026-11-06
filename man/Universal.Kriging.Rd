@@ -10,6 +10,7 @@ Universal.Kriging(
   basis.function,
   interpolation = TRUE,
   fit = TRUE,
+  nugget = NULL,
   kernel = NULL,
   kernel.parameters = list(),
   nlopt.parameters = list()
@@ -26,6 +27,8 @@ Universal.Kriging(
 
 \item{fit}{whether to fit the length scale parameters from data}
 
+\item{nugget}{an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling}
+
 \item{kernel}{a kernel class object}
 
 \item{kernel.parameters}{a list of parameters required for the kernel, if no kernel class object is provided}
@@ -40,7 +43,7 @@ This functions fits the universal kriging model to the data.
 }
 \details{
 Universal kriging permits a more general function of mean, which can be specified using \code{basis.function}. 
-Please see Santner et al. (2003) for details.
+Please see Joseph (2006) for details.
 
 For data from deterministic computer experiments, use \code{interpolation=TRUE} and will give an interpolator. 
 For noisy data, use \code{interpolation=FALSE}, which will give an approximator of the underlying function.
@@ -105,11 +108,11 @@ lines(newX, pred$mean+2*pred$sd, col="red", lty=3)
 Get.Kriging.Parameters(kriging)
 }
 \references{
-Santner, T. J., Williams, B. J., Notz, W. I., & Williams, B. J. (2003). \emph{The design and analysis of computer experiments (Vol. 1)}. New York: Springer.
+Joseph, V. R. (2026). \emph{Experimental Design for Data Science and Engineering}. Chapman & Hall/CRC, \doi{10.1201/9781003661535}.
 }
 \seealso{
 \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }

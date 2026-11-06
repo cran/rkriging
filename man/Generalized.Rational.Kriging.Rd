@@ -8,6 +8,7 @@ Generalized.Rational.Kriging(
   X,
   y,
   fit = TRUE,
+  nugget = NULL,
   kernel = NULL,
   kernel.parameters = list(),
   nlopt.parameters = list()
@@ -19,6 +20,8 @@ Generalized.Rational.Kriging(
 \item{y}{a vector for output (target), only one-dimensional output is supported}
 
 \item{fit}{whether to fit the length scale parameters from data}
+
+\item{nugget}{an optional nugget value to add to the diagonal of the correlation matrix for numerical stability or noise modeling}
 
 \item{kernel}{a kernel class object}
 
@@ -34,7 +37,7 @@ This functions fits the generalized rational kriging model to the data.
 }
 \details{
 Ordinary kriging and rational kriging can be obtained as special cases of generalized rational kriging. 
-Please see Joseph (2024) for details. 
+Please see Joseph (2025) for details. 
 The \href{https://spectralib.org/}{Spectra} library is used for fast computation of the first eigenvalues/vectors. 
 Only interpolation is available. Noisy output is not supported for generalized rational kriging.  
 
@@ -95,7 +98,7 @@ Get.Kriging.Parameters(kriging)
 
 }
 \references{
-Joseph, V. R. (2024). Rational Kriging. \emph{Journal of the American Statistical Association}.
+Joseph, V. R. (2025). Rational Kriging. \emph{Journal of the American Statistical Association}. 120, 548-558.
 
 Qiu, Y., Guennebaud, G., & Niesen, J. (2015). Spectra: C++ library for large scale eigenvalue problems.
 }
@@ -103,5 +106,5 @@ Qiu, Y., Guennebaud, G., & Niesen, J. (2015). Spectra: C++ library for large sca
 \link{Fit.Kriging}, \link{Predict.Kriging}, \link{Get.Kriging.Parameters}.
 }
 \author{
-Chaofan Huang and V. Roshan Joseph
+Chaofan Huang, Difan Song, and V. Roshan Joseph
 }
